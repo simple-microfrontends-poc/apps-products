@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { bus } from "@admin/event-bus";
 import type {
   CategorySelection,
   CategoryPickerProps,
 } from "categoryPicker/CategoryPicker";
-import {
-  fetchProducts,
-  ProductOut,
-  ProductList as ProductListData,
-} from "../lib/api";
+import { fetchProducts, fetchCategory, ProductOut } from "../lib/api";
+
+const LIMIT = 20;
 
 const CategoryPicker = React.lazy(
   () => import("categoryPicker/CategoryPicker")
@@ -73,60 +72,88 @@ function CategoryPickerModal({
 }
 
 function Products() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const category = searchParams.get("category"); // category id (string) | null
+  const q = searchParams.get("q") ?? "";
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const offset = (page - 1) * LIMIT;
+
   const [products, setProducts] = useState<ProductOut[]>([]);
   const [total, setTotal] = useState(0);
-  const [limit] = useState(20);
-  const [offset, setOffset] = useState(0);
-  const [search, setSearch] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<{
-    id: number;
-    name: string;
-  } | null>(null);
+  const [searchInput, setSearchInput] = useState(q);
+  const [categoryName, setCategoryName] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const loadProducts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data: ProductListData = await fetchProducts(
-        limit,
-        offset,
-        appliedSearch || undefined,
-        categoryFilter?.id
-      );
-      setProducts(data.items);
-      setTotal(data.total);
-    } catch (e) {
-      console.error("Failed to load products:", e);
-    } finally {
-      setLoading(false);
-    }
-  }, [limit, offset, appliedSearch, categoryFilter]);
-
+  // Keep the input in sync when q changes from outside (back/forward, deep link).
   useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+    setSearchInput(q);
+  }, [q]);
+
+  // Resolve the category id (from the URL) to a name for the filter chip.
+  useEffect(() => {
+    if (!category) {
+      setCategoryName(null);
+      return;
+    }
+    let cancelled = false;
+    fetchCategory(Number(category))
+      .then((c) => !cancelled && setCategoryName(c.name))
+      .catch(() => !cancelled && setCategoryName(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [category]);
+
+  // The URL is the single source of truth — refetch whenever it changes.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchProducts(LIMIT, offset, q || undefined, category ? Number(category) : undefined)
+      .then((data) => {
+        if (!cancelled) {
+          setProducts(data.items);
+          setTotal(data.total);
+        }
+      })
+      .catch((e) => console.error("Failed to load products:", e))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [q, category, offset]);
+
+  // Mutate the filter/keyword and reset back to the first page.
+  const setFilter = (mutate: (p: URLSearchParams) => void) => {
+    const next = new URLSearchParams(searchParams);
+    mutate(next);
+    next.delete("page");
+    setSearchParams(next);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setOffset(0);
-    setAppliedSearch(search);
-  };
-
-  const handlePageChange = (newOffset: number) => {
-    setOffset(newOffset);
+    setFilter((p) => {
+      if (searchInput) p.set("q", searchInput);
+      else p.delete("q");
+    });
   };
 
   const handleCategorySelect = (selection: CategorySelection) => {
-    setCategoryFilter({ id: selection.id, name: selection.name });
-    setOffset(0);
+    setCategoryName(selection.name);
+    setFilter((p) => p.set("category", String(selection.id)));
     setPickerOpen(false);
   };
 
   const clearCategoryFilter = () => {
-    setCategoryFilter(null);
-    setOffset(0);
+    setFilter((p) => p.delete("category"));
+  };
+
+  const goToPage = (next: number) => {
+    const params = new URLSearchParams(searchParams);
+    if (next <= 1) params.delete("page");
+    else params.set("page", String(next));
+    setSearchParams(params);
   };
 
   // Loosely coupled with navigation: announce the selection and let whoever
@@ -135,8 +162,8 @@ function Products() {
     bus.emit("productSelected", { sku: product.sku });
   };
 
-  const totalPages = Math.ceil(total / limit);
-  const currentPage = Math.floor(offset / limit) + 1;
+  const totalPages = Math.ceil(total / LIMIT);
+  const currentPage = page;
 
   return (
     <div>
@@ -152,8 +179,8 @@ function Products() {
           <input
             type="text"
             placeholder="Szukaj po nazwie lub SKU..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
           <button
@@ -172,10 +199,10 @@ function Products() {
         </button>
       </div>
 
-      {categoryFilter && (
+      {category && (
         <div className="mb-4">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-sm">
-            Kategoria: <span className="font-medium">{categoryFilter.name}</span>
+            Kategoria: <span className="font-medium">{categoryName ?? `#${category}`}</span>
             <button
               onClick={clearCategoryFilter}
               className="text-indigo-400 hover:text-indigo-700 leading-none"
@@ -245,15 +272,15 @@ function Products() {
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => handlePageChange(offset - limit)}
+                  onClick={() => goToPage(currentPage - 1)}
                   disabled={offset === 0}
                   className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Poprzednia
                 </button>
                 <button
-                  onClick={() => handlePageChange(offset + limit)}
-                  disabled={offset + limit >= total}
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={offset + LIMIT >= total}
                   className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Nastepna

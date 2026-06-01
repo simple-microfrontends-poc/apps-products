@@ -18,5 +18,11 @@ export interface ProductList {
     offset: number;
 }
 export declare function fetchProducts(limit?: number, offset?: number, search?: string, category?: number): Promise<ProductList>;
-export declare function fetchProductById(id: number): Promise<ProductOut>;
+export interface Category {
+    id: number;
+    name: string;
+}
+/** Resolve a category id to its name — used to label the active filter chip
+ *  when the filter comes from the URL (deep link) and the name isn't known. */
+export declare function fetchCategory(id: number): Promise<Category>;
 //# sourceMappingURL=api.d.ts.map

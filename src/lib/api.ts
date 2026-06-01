@@ -40,8 +40,15 @@ export async function fetchProducts(
   return res.json();
 }
 
-export async function fetchProductById(id: number): Promise<ProductOut> {
-  const res = await fetch(`${API_BASE}/products/${id}`);
+export interface Category {
+  id: number;
+  name: string;
+}
+
+/** Resolve a category id to its name — used to label the active filter chip
+ *  when the filter comes from the URL (deep link) and the name isn't known. */
+export async function fetchCategory(id: number): Promise<Category> {
+  const res = await fetch(`${API_BASE}/categories/${id}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
   return res.json();
 }
