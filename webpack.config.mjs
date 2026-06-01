@@ -56,6 +56,9 @@ export default {
       shared: {
         react: { singleton: true, requiredVersion: deps.react },
         "react-dom": { singleton: true, requiredVersion: deps["react-dom"] },
+        // Singleton event bus — without this each MFE bundles its own mitt()
+        // instance and events never cross the federation boundary.
+        "@admin/event-bus": { singleton: true, requiredVersion: false },
       },
       dts: false,
     }),

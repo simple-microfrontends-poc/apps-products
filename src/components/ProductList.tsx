@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { bus } from "@admin/event-bus";
 import type {
   CategorySelection,
   CategoryPickerProps,
@@ -8,8 +9,6 @@ import {
   ProductOut,
   ProductList as ProductListData,
 } from "../lib/api";
-
-type View = "list" | "detail";
 
 const CategoryPicker = React.lazy(
   () => import("categoryPicker/CategoryPicker")
@@ -86,8 +85,6 @@ function Products() {
   } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<ProductOut | null>(null);
-  const [view, setView] = useState<View>("list");
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -132,27 +129,14 @@ function Products() {
     setOffset(0);
   };
 
+  // Loosely coupled with navigation: announce the selection and let whoever
+  // owns routing (the shell) open the product card.
   const handleSelectProduct = (product: ProductOut) => {
-    setSelectedProduct(product);
-    setView("detail");
-  };
-
-  const handleBackToList = () => {
-    setView("list");
-    setSelectedProduct(null);
+    bus.emit("productSelected", { sku: product.sku });
   };
 
   const totalPages = Math.ceil(total / limit);
   const currentPage = Math.floor(offset / limit) + 1;
-
-  if (view === "detail" && selectedProduct) {
-    return (
-      <ProductDetail
-        product={selectedProduct}
-        onBack={handleBackToList}
-      />
-    );
-  }
 
   return (
     <div>
@@ -227,7 +211,7 @@ function Products() {
               <tbody className="divide-y divide-gray-100">
                 {products.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-12 text-center text-gray-400">
+                    <td colSpan={3} className="px-4 py-12 text-center text-gray-400">
                       Brak produktow.
                     </td>
                   </tr>
@@ -286,69 +270,6 @@ function Products() {
           onClose={() => setPickerOpen(false)}
         />
       )}
-    </div>
-  );
-}
-
-function ProductDetail({
-  product,
-  onBack,
-}: {
-  product: ProductOut;
-  onBack: () => void;
-}) {
-  return (
-    <div>
-      <button
-        onClick={onBack}
-        className="mb-4 text-sm text-indigo-600 hover:text-indigo-800 transition-colors"
-      >
-        &larr; Powrot do listy
-      </button>
-
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-1">{product.name}</h2>
-        <div className="flex gap-4 mb-4 text-sm">
-          <span className="text-gray-500">SKU: <span className="font-mono text-gray-700">{product.sku}</span></span>
-          <span className="text-gray-500">GTIN: <span className="font-mono text-gray-700">{product.gtin}</span></span>
-          <span className="text-gray-500">Kategoria: <span className="text-gray-700">{product.category}</span></span>
-        </div>
-
-        <p className="text-gray-600 text-sm mb-4">{product.description}</p>
-
-        {product.images.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Zdjecia</h3>
-            <div className="flex gap-2">
-              {product.images.map((img, i) => (
-                <img
-                  key={i}
-                  src={img}
-                  alt=""
-                  className="w-20 h-20 object-cover rounded-lg border border-gray-200"
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {product.attributes.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Atrybuty</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {product.attributes.map((attr, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between px-3 py-2 bg-gray-50 rounded text-sm"
-                >
-                  <span className="text-gray-500">{attr.name}</span>
-                  <span className="text-gray-800 font-medium">{attr.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
