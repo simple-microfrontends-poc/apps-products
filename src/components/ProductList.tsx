@@ -220,9 +220,6 @@ function Products() {
                     Nazwa
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Kategoria
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     GTIN
                   </th>
                 </tr>
@@ -246,9 +243,6 @@ function Products() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-800 font-medium">
                         {product.name}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {product.category}
                       </td>
                       <td className="px-4 py-3 text-sm font-mono text-gray-400">
                         {product.gtin}
