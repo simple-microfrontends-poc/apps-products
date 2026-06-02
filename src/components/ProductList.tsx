@@ -5,7 +5,7 @@ import type {
   CategorySelection,
   CategoryPickerProps,
 } from "categoryPicker/CategoryPicker";
-import { fetchProducts, fetchCategory, ProductOut } from "../lib/api";
+import { fetchProducts, fetchCategoryPath, ProductOut } from "../lib/api";
 import Pagination from "./Pagination";
 
 const LIMIT = 20;
@@ -38,9 +38,11 @@ class PickerErrorBoundary extends React.Component<
 }
 
 function CategoryPickerModal({
+  categoryId,
   onSelect,
   onClose,
 }: {
+  categoryId?: number;
   onSelect: (selection: CategorySelection) => void;
   onClose: () => void;
 }) {
@@ -67,6 +69,7 @@ function CategoryPickerModal({
             }
           >
             <CategoryPicker
+              categoryId={categoryId}
               selectionMode="any"
               confirmLabel="Filtruj"
               title="Filtruj wg kategorii"
@@ -90,7 +93,7 @@ function Products() {
   const [products, setProducts] = useState<ProductOut[]>([]);
   const [total, setTotal] = useState(0);
   const [searchInput, setSearchInput] = useState(q);
-  const [categoryName, setCategoryName] = useState<string | null>(null);
+  const [categoryPath, setCategoryPath] = useState<{ id: number; name: string }[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -99,16 +102,16 @@ function Products() {
     setSearchInput(q);
   }, [q]);
 
-  // Resolve the category id (from the URL) to a name for the filter chip.
+  // Resolve the category id (from the URL) to a full breadcrumb for the filter.
   useEffect(() => {
     if (!category) {
-      setCategoryName(null);
+      setCategoryPath([]);
       return;
     }
     let cancelled = false;
-    fetchCategory(Number(category))
-      .then((c) => !cancelled && setCategoryName(c.name))
-      .catch(() => !cancelled && setCategoryName(null));
+    fetchCategoryPath(Number(category))
+      .then((path) => !cancelled && setCategoryPath(path))
+      .catch(() => !cancelled && setCategoryPath([]));
     return () => {
       cancelled = true;
     };
@@ -149,7 +152,7 @@ function Products() {
   };
 
   const handleCategorySelect = (selection: CategorySelection) => {
-    setCategoryName(selection.name);
+    setCategoryPath(selection.path); // optimistic breadcrumb from the picker
     setFilter((p) => p.set("category", String(selection.id)));
     setPickerOpen(false);
   };
@@ -210,11 +213,27 @@ function Products() {
 
       {category && (
         <div className="mb-4">
-          <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-sm">
-            Kategoria: <span className="font-medium">{categoryName ?? `#${category}`}</span>
+          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-sm">
+            {categoryPath.length > 0 ? (
+              categoryPath.map((crumb, i) => (
+                <React.Fragment key={crumb.id}>
+                  {i > 0 && <span className="text-indigo-300">/</span>}
+                  <button
+                    onClick={() =>
+                      setFilter((p) => p.set("category", String(crumb.id)))
+                    }
+                    className="font-medium hover:underline"
+                  >
+                    {crumb.name}
+                  </button>
+                </React.Fragment>
+              ))
+            ) : (
+              <span className="font-medium">#{category}</span>
+            )}
             <button
               onClick={clearCategoryFilter}
-              className="text-indigo-400 hover:text-indigo-700 leading-none"
+              className="text-indigo-400 hover:text-indigo-700 leading-none ml-1"
               aria-label="Wyczyść filtr kategorii"
             >
               ×
@@ -293,6 +312,7 @@ function Products() {
 
       {pickerOpen && (
         <CategoryPickerModal
+          categoryId={category ? Number(category) : undefined}
           onSelect={handleCategorySelect}
           onClose={() => setPickerOpen(false)}
         />

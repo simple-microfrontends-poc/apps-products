@@ -6,15 +6,15 @@ import { ProductOut } from "../lib/api";
 
 vi.mock("../lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/api")>();
-  return { ...actual, fetchProducts: vi.fn(), fetchCategory: vi.fn() };
+  return { ...actual, fetchProducts: vi.fn(), fetchCategoryPath: vi.fn() };
 });
 
 import Products from "./ProductList";
-import { fetchProducts, fetchCategory } from "../lib/api";
+import { fetchProducts, fetchCategoryPath } from "../lib/api";
 import { bus } from "@admin/event-bus";
 
 const mockFetchProducts = vi.mocked(fetchProducts);
-const mockFetchCategory = vi.mocked(fetchCategory);
+const mockCategoryPath = vi.mocked(fetchCategoryPath);
 
 function product(id: number, sku: string, name: string, gtin = "0000"): ProductOut {
   return {
@@ -48,8 +48,8 @@ function lastProductsCall() {
 
 beforeEach(() => {
   mockFetchProducts.mockReset();
-  mockFetchCategory.mockReset();
-  mockFetchCategory.mockResolvedValue({ id: 0, name: "" });
+  mockCategoryPath.mockReset();
+  mockCategoryPath.mockResolvedValue([]);
 });
 
 describe("Products — rendering", () => {
@@ -117,24 +117,44 @@ describe("Products — search", () => {
   });
 });
 
-describe("Products — category filter chip", () => {
-  it("resolves the category id to a name and shows the chip", async () => {
-    mockFetchCategory.mockResolvedValue({ id: 7, name: "Elektronika" });
+describe("Products — category filter breadcrumb", () => {
+  const PATH_7 = [
+    { id: 1, name: "Elektronika" },
+    { id: 11, name: "Smartfony i akcesoria" },
+    { id: 7, name: "Etui" },
+  ];
+
+  it("renders the active category as a breadcrumb resolved from its id", async () => {
+    mockCategoryPath.mockResolvedValue(PATH_7);
     renderAt("/?category=7", SAMPLE, 2);
 
     expect(await screen.findByText("Elektronika")).toBeInTheDocument();
-    expect(mockFetchCategory).toHaveBeenCalledWith(7);
+    expect(screen.getByText("Smartfony i akcesoria")).toBeInTheDocument();
+    expect(screen.getByText("Etui")).toBeInTheDocument();
+    expect(mockCategoryPath).toHaveBeenCalledWith(7);
   });
 
-  it("falls back to #id when the name cannot be resolved", async () => {
-    mockFetchCategory.mockRejectedValue(new Error("nope"));
+  it("falls back to #id when the path cannot be resolved", async () => {
+    mockCategoryPath.mockRejectedValue(new Error("nope"));
     renderAt("/?category=7", SAMPLE, 2);
 
     expect(await screen.findByText("#7")).toBeInTheDocument();
   });
 
-  it("clearing the chip removes the category from the fetch", async () => {
-    mockFetchCategory.mockResolvedValue({ id: 7, name: "Elektronika" });
+  it("clicking a breadcrumb crumb switches the filter to that category", async () => {
+    mockCategoryPath.mockResolvedValue(PATH_7);
+    const user = userEvent.setup();
+    renderAt("/?category=7", SAMPLE, 2);
+    await screen.findByText("Elektronika");
+
+    await user.click(screen.getByRole("button", { name: "Elektronika" }));
+
+    // Refetches products filtered by the clicked crumb's id (1).
+    await waitFor(() => expect(lastProductsCall()[3]).toBe(1));
+  });
+
+  it("clearing the breadcrumb removes the category from the fetch", async () => {
+    mockCategoryPath.mockResolvedValue(PATH_7);
     const user = userEvent.setup();
     renderAt("/?category=7", SAMPLE, 2);
     await screen.findByText("Elektronika");
@@ -192,9 +212,9 @@ describe("Products — event bus", () => {
 
 describe("Products — category picker (federated remote, stubbed)", () => {
   it("opens the picker and applies the chosen category as a filter", async () => {
-    // Once category=5 lands in the URL, the chip-name effect re-resolves it;
-    // make that match the picked name so it isn't overwritten.
-    mockFetchCategory.mockResolvedValue({ id: 5, name: "Książki" });
+    // Once category=5 lands in the URL, the breadcrumb effect re-resolves it;
+    // make that match the picked path so it isn't overwritten.
+    mockCategoryPath.mockResolvedValue([{ id: 5, name: "Książki" }]);
     const user = userEvent.setup();
     renderAt("/", SAMPLE, 2);
     await screen.findByText("Widget");
@@ -210,6 +230,17 @@ describe("Products — category picker (federated remote, stubbed)", () => {
     // STUB_SELECTION = { id: 5, name: "Książki" }
     expect(await screen.findByText("Książki")).toBeInTheDocument();
     await waitFor(() => expect(lastProductsCall()[3]).toBe(5));
+  });
+
+  it("opens the picker pre-navigated to the active category filter", async () => {
+    const user = userEvent.setup();
+    renderAt("/?category=7", SAMPLE, 2);
+    await screen.findByText("Widget");
+
+    await user.click(screen.getByRole("button", { name: "Filtruj wg kategorii" }));
+    const picker = await screen.findByTestId("category-picker-stub");
+
+    expect(within(picker).getByText("cat:7")).toBeInTheDocument();
   });
 
   it("closes the picker on Escape", async () => {

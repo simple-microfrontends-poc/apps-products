@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchProducts, fetchCategory } from "./api";
+import { fetchProducts, fetchCategoryPath } from "./api";
 
 const API_BASE = "http://localhost:8000";
 
@@ -81,17 +81,20 @@ describe("fetchProducts", () => {
   });
 });
 
-describe("fetchCategory", () => {
+describe("fetchCategoryPath", () => {
   beforeEach(() => vi.stubGlobal("fetch", vi.fn()));
   afterEach(() => vi.unstubAllGlobals());
 
-  it("GETs /categories/:id and returns the parsed body", async () => {
-    const body = { id: 7, name: "Books" };
+  it("GETs /categories/:id/paths and returns the parsed breadcrumb", async () => {
+    const body = [
+      { id: 1, name: "Elektronika" },
+      { id: 11, name: "Smartfony i akcesoria" },
+    ];
     vi.stubGlobal("fetch", mockFetchOnce(body));
 
-    const result = await fetchCategory(7);
+    const result = await fetchCategoryPath(7);
 
-    expect(fetch).toHaveBeenCalledWith(`${API_BASE}/categories/7`);
+    expect(fetch).toHaveBeenCalledWith(`${API_BASE}/categories/7/paths`);
     expect(result).toEqual(body);
   });
 
@@ -101,6 +104,6 @@ describe("fetchCategory", () => {
       mockFetchOnce(null, { ok: false, status: 404, statusText: "Not Found" }),
     );
 
-    await expect(fetchCategory(99)).rejects.toThrow("HTTP 404: Not Found");
+    await expect(fetchCategoryPath(99)).rejects.toThrow("HTTP 404: Not Found");
   });
 });

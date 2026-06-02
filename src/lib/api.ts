@@ -46,10 +46,10 @@ export interface Category {
   name: string;
 }
 
-/** Resolve a category id to its name — used to label the active filter chip
- *  when the filter comes from the URL (deep link) and the name isn't known. */
-export async function fetchCategory(id: number): Promise<Category> {
-  const res = await fetch(`${API_BASE}/categories/${id}`);
+/** Full category breadcrumb (root first) — used to render the active filter
+ *  as a clickable path (resolves the id from the URL to named, navigable crumbs). */
+export async function fetchCategoryPath(id: number): Promise<Category[]> {
+  const res = await fetch(`${API_BASE}/categories/${id}/paths`);
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
   return res.json();
 }

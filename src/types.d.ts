@@ -13,6 +13,7 @@ declare module "categoryPicker/CategoryPicker" {
   }
 
   export interface CategoryPickerProps {
+    categoryId?: number;
     onSelect: (selection: CategorySelection) => void;
     onCancel?: () => void;
     selectionMode?: "leaf" | "any";

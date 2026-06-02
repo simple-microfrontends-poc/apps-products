@@ -14,6 +14,7 @@ export const STUB_SELECTION: CategorySelection = {
 };
 
 export default function CategoryPickerStub({
+  categoryId,
   onSelect,
   onCancel,
   title,
@@ -22,6 +23,7 @@ export default function CategoryPickerStub({
   return (
     <div data-testid="category-picker-stub">
       {title && <h3>{title}</h3>}
+      <span>cat:{categoryId}</span>
       <button type="button" onClick={() => onSelect(STUB_SELECTION)}>
         {confirmLabel ?? "Wybierz"}
       </button>
