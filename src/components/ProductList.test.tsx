@@ -150,9 +150,14 @@ describe("Products — pagination", () => {
     renderAt("/", SAMPLE, 45); // 45 / 20 -> 3 pages
     await screen.findByText("Widget");
 
-    expect(screen.getByText("Strona 1 z 3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Poprzednia" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Nastepna" })).toBeEnabled();
+    // Pagination is rendered both above and below the table.
+    expect(screen.getAllByText("Strona 1 z 3")).toHaveLength(2);
+    screen
+      .getAllByRole("button", { name: "Poprzednia" })
+      .forEach((btn) => expect(btn).toBeDisabled());
+    screen
+      .getAllByRole("button", { name: "Nastepna" })
+      .forEach((btn) => expect(btn).toBeEnabled());
   });
 
   it("does not render pagination when everything fits on one page", async () => {
@@ -167,7 +172,7 @@ describe("Products — pagination", () => {
     renderAt("/", SAMPLE, 45);
     await screen.findByText("Widget");
 
-    await user.click(screen.getByRole("button", { name: "Nastepna" }));
+    await user.click(screen.getAllByRole("button", { name: "Nastepna" })[0]);
 
     await waitFor(() => expect(lastProductsCall()[1]).toBe(20));
   });
@@ -205,5 +210,17 @@ describe("Products — category picker (federated remote, stubbed)", () => {
     // STUB_SELECTION = { id: 5, name: "Książki" }
     expect(await screen.findByText("Książki")).toBeInTheDocument();
     await waitFor(() => expect(lastProductsCall()[3]).toBe(5));
+  });
+
+  it("closes the picker on Escape", async () => {
+    const user = userEvent.setup();
+    renderAt("/", SAMPLE, 2);
+    await screen.findByText("Widget");
+
+    await user.click(screen.getByRole("button", { name: "Filtruj wg kategorii" }));
+    expect(await screen.findByTestId("category-picker-stub")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByTestId("category-picker-stub")).not.toBeInTheDocument();
   });
 });

@@ -6,6 +6,7 @@ import type {
   CategoryPickerProps,
 } from "categoryPicker/CategoryPicker";
 import { fetchProducts, fetchCategory, ProductOut } from "../lib/api";
+import Pagination from "./Pagination";
 
 const LIMIT = 20;
 
@@ -43,6 +44,14 @@ function CategoryPickerModal({
   onSelect: (selection: CategorySelection) => void;
   onClose: () => void;
 }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -220,6 +229,13 @@ function Products() {
         </div>
       ) : (
         <>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPrev={() => goToPage(currentPage - 1)}
+            onNext={() => goToPage(currentPage + 1)}
+          />
+
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <table className="w-full">
               <thead>
@@ -265,29 +281,12 @@ function Products() {
             </table>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-gray-500">
-                Strona {currentPage} z {totalPages}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => goToPage(currentPage - 1)}
-                  disabled={offset === 0}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Poprzednia
-                </button>
-                <button
-                  onClick={() => goToPage(currentPage + 1)}
-                  disabled={offset + LIMIT >= total}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Nastepna
-                </button>
-              </div>
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPrev={() => goToPage(currentPage - 1)}
+            onNext={() => goToPage(currentPage + 1)}
+          />
         </>
       )}
 
