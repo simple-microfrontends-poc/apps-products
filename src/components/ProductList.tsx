@@ -234,6 +234,7 @@ function Products() {
             totalPages={totalPages}
             onPrev={() => goToPage(currentPage - 1)}
             onNext={() => goToPage(currentPage + 1)}
+            className="mb-4"
           />
 
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">

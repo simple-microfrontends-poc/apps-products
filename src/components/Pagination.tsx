@@ -5,16 +5,18 @@ function Pagination({
   totalPages,
   onPrev,
   onNext,
+  className = "",
 }: {
   currentPage: number;
   totalPages: number;
   onPrev: () => void;
   onNext: () => void;
+  className?: string;
 }) {
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between mt-4">
+    <div className={`flex items-center justify-between mt-4 ${className}`}>
       <p className="text-sm text-gray-500">
         Strona {currentPage} z {totalPages}
       </p>
