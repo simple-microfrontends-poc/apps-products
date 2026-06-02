@@ -6,6 +6,7 @@ export interface Attribute {
 }
 
 export interface ProductOut {
+  id: number;
   sku: string;
   name: string;
   images: string[];

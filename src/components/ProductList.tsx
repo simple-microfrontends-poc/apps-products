@@ -159,7 +159,7 @@ function Products() {
   // Loosely coupled with navigation: announce the selection and let whoever
   // owns routing (the shell) open the product card.
   const handleSelectProduct = (product: ProductOut) => {
-    bus.emit("productSelected", { sku: product.sku });
+    bus.emit("productSelected", { id: product.id });
   };
 
   const totalPages = Math.ceil(total / LIMIT);
@@ -245,7 +245,7 @@ function Products() {
                 ) : (
                   products.map((product) => (
                     <tr
-                      key={product.sku}
+                      key={product.id}
                       onClick={() => handleSelectProduct(product)}
                       className="hover:bg-gray-50 cursor-pointer transition-colors"
                     >

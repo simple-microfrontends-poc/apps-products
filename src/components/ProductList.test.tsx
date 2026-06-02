@@ -16,8 +16,9 @@ import { bus } from "@admin/event-bus";
 const mockFetchProducts = vi.mocked(fetchProducts);
 const mockFetchCategory = vi.mocked(fetchCategory);
 
-function product(sku: string, name: string, gtin = "0000"): ProductOut {
+function product(id: number, sku: string, name: string, gtin = "0000"): ProductOut {
   return {
+    id,
     sku,
     name,
     gtin,
@@ -28,7 +29,7 @@ function product(sku: string, name: string, gtin = "0000"): ProductOut {
   };
 }
 
-const SAMPLE = [product("A1", "Widget", "111"), product("B2", "Gadget", "222")];
+const SAMPLE = [product(1, "A1", "Widget", "111"), product(2, "B2", "Gadget", "222")];
 
 function renderAt(path = "/", items = SAMPLE, total = items.length) {
   mockFetchProducts.mockResolvedValue({ items, total, limit: 20, offset: 0 });
@@ -173,14 +174,14 @@ describe("Products — pagination", () => {
 });
 
 describe("Products — event bus", () => {
-  it("emits productSelected with the SKU when a row is clicked", async () => {
+  it("emits productSelected with the id when a row is clicked", async () => {
     const emit = vi.spyOn(bus, "emit");
     const user = userEvent.setup();
     renderAt("/", SAMPLE, 2);
 
     await user.click(await screen.findByText("Widget"));
 
-    expect(emit).toHaveBeenCalledWith("productSelected", { sku: "A1" });
+    expect(emit).toHaveBeenCalledWith("productSelected", { id: 1 });
   });
 });
 
